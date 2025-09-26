@@ -1,4 +1,6 @@
 import components.DrawingPanel;
+import tools.MarkTool;
+import tools.RectTool;
 
 import javax.swing.*;
 import java.awt.*;
@@ -27,6 +29,27 @@ public class SimpleCanvasApp {
         JPanel leftPanel = new JPanel(new BorderLayout());
         leftPanel.setPreferredSize(new Dimension(sidePanelWidth, frame.getHeight()));
         leftPanel.setBackground(sidePanelColor);
+
+        JButton markBtn = new JButton("Mark");
+        markBtn.addActionListener(e -> drawingPanel.setCurrentTool(new MarkTool()));
+        markBtn.setPreferredSize(new Dimension(64, 32));
+        markBtn.setMinimumSize(new Dimension(64, 32));
+        markBtn.setMaximumSize(new Dimension(64, 32));
+
+        JButton rectBtn = new JButton("Rect");
+        rectBtn.addActionListener(e -> drawingPanel.setCurrentTool(new RectTool()));
+        rectBtn.setPreferredSize(new Dimension(64, 32));
+        rectBtn.setMinimumSize(new Dimension(64, 32));
+        rectBtn.setMaximumSize(new Dimension(64, 32));
+
+        JPanel row1 = new JPanel(new BorderLayout());
+        row1.setLayout(new BoxLayout(row1, BoxLayout.X_AXIS));
+        row1.add(markBtn);
+        row1.add(Box.createRigidArea(new Dimension(0, 5)));
+        row1.add(rectBtn);
+        row1.add(Box.createRigidArea(new Dimension(0, 5)));
+        leftPanel.add(row1, BorderLayout.NORTH);
+
         frame.add(leftPanel, BorderLayout.WEST);
 
         JPanel rightPanel = new JPanel(new BorderLayout());
