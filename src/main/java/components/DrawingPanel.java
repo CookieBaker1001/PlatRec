@@ -1,5 +1,8 @@
 package components;
 
+import tools.RectTool;
+import tools.Tool;
+
 import javax.swing.*;
 
 import java.awt.*;
@@ -13,7 +16,7 @@ import static util.Constants.*;
 public class DrawingPanel extends JPanel implements MouseListener, MouseMotionListener {
 
     private final ArrayList<CanvasObject> canvasObjects = new ArrayList<>();
-    private final Point originOfClick = new Point(-1, -1);
+    private Tool currentTool = null;
 
     private double zoom = 1.0;
     private double offsetX = 0;
@@ -26,6 +29,7 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         addMouseListener(this);
         addMouseMotionListener(this);
         addMouseWheelListenerHelper();
+        currentTool = new RectTool();
     }
 
     @Override
@@ -51,6 +55,17 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         g2.fillRect(0, 0, getWidth(), getHeight());
     }
 
+    public void drawRectangle(Point p1, Point p2) {
+        Point p11 = screenToCanvas(p1);
+        Point p22 = screenToCanvas(p2);
+        CanvasObject canvasObject = new CanvasObject();
+        canvasObject.x = Math.min(p11.x, p22.x);
+        canvasObject.y = Math.min(p11.y, p22.y);
+        canvasObject.width = Math.abs(p22.x - p11.x);
+        canvasObject.height = Math.abs(p22.y - p11.y);
+        canvasObjects.add(canvasObject);
+    }
+
     @Override
     public void mouseClicked(MouseEvent e) {
 
@@ -61,10 +76,8 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         if (SwingUtilities.isMiddleMouseButton(e)) {
             isPanning = true;
             panStartPoint = e.getPoint();
-        } else if (SwingUtilities.isLeftMouseButton(e)) {
-            Point p = screenToCanvas(e.getPoint());
-            originOfClick.x = p.x;
-            originOfClick.y = p.y;
+        } else {
+            currentTool.mousePressed(e, this);
         }
     }
 
@@ -73,18 +86,9 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         if (SwingUtilities.isMiddleMouseButton(e)) {
             isPanning = false;
             panStartPoint = null;
-        } else if (SwingUtilities.isLeftMouseButton(e)) {
-            Point p = screenToCanvas(e.getPoint());
-            CanvasObject canvasObject = new CanvasObject();
-            canvasObject.x = Math.min(originOfClick.x, p.x);
-            canvasObject.y = Math.min(originOfClick.y, p.y);
-            canvasObject.width = Math.abs(p.x - originOfClick.x);
-            canvasObject.height = Math.abs(p.y - originOfClick.y);
-            canvasObjects.add(canvasObject);
-            originOfClick.x = -1;
-            originOfClick.y = -1;
+        } else {
+            currentTool.mouseReleased(e, this);
         }
-
     }
 
     public Point screenToCanvas(Point p) {
