@@ -3,6 +3,7 @@ package components;
 import tools.MarkTool;
 import tools.RectTool;
 import tools.Tool;
+import util.SaveAndLoad;
 
 import javax.swing.*;
 
@@ -10,24 +11,29 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import static util.Constants.*;
 
 public class DrawingPanel extends JPanel implements MouseListener, MouseMotionListener {
 
+    private int panelWidth, panelHeight;
+
     private final ArrayList<CanvasObject> canvasObjects = new ArrayList<>();
     private Tool currentTool = null;
 
     private Point lastDragPoint = null;
 
-    private double zoom = 1.0;
-    private double offsetX = 0;
-    private double offsetY = 0;
+    private double zoom = 0.55;
+    private double offsetX = 37;
+    private double offsetY = 124;
     private boolean isPanning = false;
     private Point panStartPoint = new Point(0, 0);
 
-    public DrawingPanel() {
+    public DrawingPanel(int width, int height) {
+        setCanvasSize(width, height);
         setBackground(drawingPanelColor);
         addMouseListener(this);
         addMouseMotionListener(this);
@@ -48,12 +54,47 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         g2.scale(zoom, zoom);
         drawCanvasBoard(g2);
 
-        g2.setColor(Color.red);
-
         drawObjects(g2);
 
         repaint();
         g2.dispose();
+    }
+
+    public int getCanvasWidth() {
+        return panelWidth;
+    }
+
+    public int getCanvasHeight() {
+        return panelHeight;
+    }
+
+    public void centerCanvas() {
+        System.out.println("Centering canvas...");
+        double canvasWidth = panelWidth * zoom;
+        double canvasHeight = panelHeight * zoom;
+        offsetX = (getWidth() - canvasWidth) / 2;
+        offsetY = (getHeight() - canvasHeight) / 2;
+        System.out.println("offsetX: " + offsetX + ", offsetY: " + offsetY);
+        repaint();
+    }
+
+    public void setCanvasSize(int width, int height) {
+        this.panelWidth = width;
+        this.panelHeight = height;
+        //System.out.println("Canvas size set to: " + panelWidth + "x" + panelHeight);
+        setPreferredSize(new Dimension(panelWidth, panelHeight));
+        //setSize(panelWidth, panelHeight);
+        centerCanvas();
+        revalidate();
+        repaint();
+    }
+
+    public void export(File file) throws IOException {
+        try {
+            SaveAndLoad.export(file, canvasObjects, panelWidth, panelHeight);
+        } catch (IOException e) {
+            throw e;
+        }
     }
 
     public boolean checkPointMark(Point point) {
@@ -75,19 +116,19 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
 
     private void drawObjects(Graphics2D g2) {
         for (CanvasObject obj : canvasObjects) {
+            g2.setColor(obj.color);
             g2.fillRect(obj.x, obj.y, obj.width, obj.height);
             if (obj.selected) {
                 g2.setColor(Color.BLACK);
                 g2.setStroke(new BasicStroke(2));
                 g2.drawRect(obj.x, obj.y, obj.width, obj.height);
-                g2.setColor(Color.red);
             }
         }
     }
 
     private void drawCanvasBoard(Graphics2D g2) {
         g2.setColor(drawingCanvasColor);
-        g2.fillRect(0, 0, getWidth(), getHeight());
+        g2.fillRect(0, 0, panelWidth, panelHeight);
     }
 
     public void drawRectangle(Point p1, Point p2) {
@@ -128,7 +169,7 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
 
     @Override
     public void mouseClicked(MouseEvent e) {
-
+        System.out.println("Mouse clicked at: " + screenToCanvas(e.getPoint()));
     }
 
     @Override

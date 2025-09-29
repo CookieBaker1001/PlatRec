@@ -1,4 +1,6 @@
 import components.DrawingPanel;
+import components.LeftPanel;
+import components.RightPanel;
 import tools.MarkTool;
 import tools.RectTool;
 
@@ -22,42 +24,24 @@ public class SimpleCanvasApp {
         ImageIcon appIcon = new ImageIcon(Objects.requireNonNull(SimpleCanvasApp.class.getResource("/icon.png")));
         frame.setIconImage(appIcon.getImage());
 
-        DrawingPanel drawingPanel = new DrawingPanel();
+        DrawingPanel drawingPanel = new DrawingPanel(1000, 700);
         drawingPanel.setBorder(null);
+
+        // Wrap the DrawingPanel in a JScrollPane
+        JScrollPane scrollPane = new JScrollPane(drawingPanel);
+        scrollPane.setBorder(null);
+
+        //frame.add(scrollPane, BorderLayout.CENTER);
         frame.add(drawingPanel, BorderLayout.CENTER);
 
-        JPanel leftPanel = new JPanel(new BorderLayout());
-        leftPanel.setPreferredSize(new Dimension(sidePanelWidth, frame.getHeight()));
-        leftPanel.setBackground(sidePanelColor);
+        LeftPanel leftPanel = new LeftPanel(drawingPanel);
+        frame.add(leftPanel.getPanel(), BorderLayout.WEST);
 
-        JButton markBtn = new JButton("Mark");
-        markBtn.addActionListener(e -> drawingPanel.setCurrentTool(new MarkTool()));
-        markBtn.setPreferredSize(new Dimension(64, 32));
-        markBtn.setMinimumSize(new Dimension(64, 32));
-        markBtn.setMaximumSize(new Dimension(64, 32));
-
-        JButton rectBtn = new JButton("Rect");
-        rectBtn.addActionListener(e -> drawingPanel.setCurrentTool(new RectTool()));
-        rectBtn.setPreferredSize(new Dimension(64, 32));
-        rectBtn.setMinimumSize(new Dimension(64, 32));
-        rectBtn.setMaximumSize(new Dimension(64, 32));
-
-        JPanel row1 = new JPanel(new BorderLayout());
-        row1.setLayout(new BoxLayout(row1, BoxLayout.X_AXIS));
-        row1.add(markBtn);
-        row1.add(Box.createRigidArea(new Dimension(0, 5)));
-        row1.add(rectBtn);
-        row1.add(Box.createRigidArea(new Dimension(0, 5)));
-        leftPanel.add(row1, BorderLayout.NORTH);
-
-        frame.add(leftPanel, BorderLayout.WEST);
-
-        JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setPreferredSize(new Dimension(sidePanelWidth, frame.getHeight()));
-        rightPanel.setBackground(sidePanelColor);
-        frame.add(rightPanel, BorderLayout.EAST);
+        RightPanel rightPanel = new RightPanel(frame, drawingPanel);
+        frame.add(rightPanel.getPanel(), BorderLayout.EAST);
 
         frame.setVisible(true);
         //drawingPanel.requestFocusInWindow();
+        drawingPanel.centerCanvas();
     }
 }
