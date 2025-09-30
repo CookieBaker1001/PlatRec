@@ -11,6 +11,7 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.geom.AffineTransform;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -68,13 +69,17 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         return panelHeight;
     }
 
+    public ArrayList<CanvasObject> getCanvasObjects() {
+        return canvasObjects;
+    }
+
     public void centerCanvas() {
-        System.out.println("Centering canvas...");
+        //System.out.println("Centering canvas...");
         double canvasWidth = panelWidth * zoom;
         double canvasHeight = panelHeight * zoom;
         offsetX = (getWidth() - canvasWidth) / 2;
         offsetY = (getHeight() - canvasHeight) / 2;
-        System.out.println("offsetX: " + offsetX + ", offsetY: " + offsetY);
+        //System.out.println("offsetX: " + offsetX + ", offsetY: " + offsetY);
         repaint();
     }
 
@@ -117,13 +122,50 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
     private void drawObjects(Graphics2D g2) {
         for (CanvasObject obj : canvasObjects) {
             g2.setColor(obj.color);
-            g2.fillRect(obj.x, obj.y, obj.width, obj.height);
-            if (obj.selected) {
-                g2.setColor(Color.BLACK);
-                g2.setStroke(new BasicStroke(2));
-                g2.drawRect(obj.x, obj.y, obj.width, obj.height);
-            }
+            AffineTransform old = g2.getTransform();
+            g2.translate(obj.x + obj.width/2.0, obj.y + obj.height/2.0);
+            g2.rotate(Math.toRadians(obj.angle));
+            g2.translate(-obj.width/2.0, -obj.height/2.0);
+            g2.fillRect(0, 0, obj.width, obj.height);
+            g2.setTransform(old);
         }
+        Rectangle sb = getSelectionBounds();
+        if (sb != null) {
+            AffineTransform old = g2.getTransform();
+            g2.setColor(Color.BLACK);
+            float[] dash = {4f, 4f};
+            g2.setStroke(new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10, dash, 0));
+            g2.drawRect(sb.x, sb.y, sb.width, sb.height);
+            g2.setTransform(old);
+            g2.setColor(Color.WHITE);
+            int[][] anchorPoints = {
+                    {sb.x, sb.y}, {sb.x+sb.width, sb.y}, {sb.x+sb.width, sb.y+sb.height}, {sb.x, sb.y+sb.height}
+            };
+            for (int[] pt : anchorPoints) {
+                g2.setStroke(new BasicStroke(3));
+                g2.fillRect(pt[0] - ANCHOR_SIZE/2, pt[1] - ANCHOR_SIZE/2, ANCHOR_SIZE, ANCHOR_SIZE);
+                g2.setColor(Color.BLACK);
+                g2.drawRect(pt[0] - ANCHOR_SIZE/2, pt[1] - ANCHOR_SIZE/2, ANCHOR_SIZE, ANCHOR_SIZE);
+                g2.setColor(Color.WHITE);
+            }
+            g2.setTransform(old);
+        }
+    }
+
+    public Rectangle getSelectionBounds() {
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
+        boolean anySelected = false;
+        for (CanvasObject obj : canvasObjects) {
+            if (!obj.selected) continue;
+            anySelected = true;
+            minX = Math.min(minX, obj.x);
+            minY = Math.min(minY, obj.y);
+            maxX = Math.max(maxX, obj.x + obj.width);
+            maxY = Math.max(maxY, obj.y + obj.height);
+        }
+        if (!anySelected) return null;
+        return new Rectangle(minX, minY, maxX - minX, maxY - minY);
     }
 
     private void drawCanvasBoard(Graphics2D g2) {
@@ -140,6 +182,19 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         canvasObject.width = Math.abs(endPoint.x - startPoint.x);
         canvasObject.height = Math.abs(endPoint.y - startPoint.y);
         canvasObjects.add(canvasObject);
+    }
+
+    public boolean markPoint(Point point) {
+        Point canvasPoint = screenToCanvas(point);
+        boolean marked = false;
+        for (CanvasObject obj : canvasObjects) {
+            Rectangle objRect = new Rectangle(obj.x, obj.y, obj.width, obj.height);
+            if (objRect.contains(canvasPoint)) {
+                obj.selected = true;
+                marked = true;
+            }
+        }
+        return marked;
     }
 
     public boolean markArea(Point p1, Point p2) {
@@ -169,7 +224,7 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
 
     @Override
     public void mouseClicked(MouseEvent e) {
-        System.out.println("Mouse clicked at: " + screenToCanvas(e.getPoint()));
+        //System.out.println("Mouse clicked at: " + screenToCanvas(e.getPoint()));
     }
 
     @Override

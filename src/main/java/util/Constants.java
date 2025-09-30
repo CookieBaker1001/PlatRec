@@ -10,6 +10,8 @@ public final class Constants {
     public final static Color sidePanelColor = new Color(100, 100, 100);
     public final static int sidePanelWidth = 150;
 
+    public final static int ANCHOR_SIZE = 8;
+
     public Constants() {
 
     }
