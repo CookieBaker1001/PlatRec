@@ -33,6 +33,10 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
     private boolean isPanning = false;
     private Point panStartPoint = new Point(0, 0);
 
+    private boolean objectsSelected = false;
+    private int[][] currentAnchorPoints = null;
+    private Rectangle sb = null;
+
     public DrawingPanel(int width, int height) {
         setCanvasSize(width, height);
         setBackground(drawingPanelColor);
@@ -113,10 +117,16 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         if (!result) return false;
         Point canvasPoint = screenToCanvas(point);
         for (CanvasObject canvasObject : canvasObjects) {
-            Rectangle objRect = new Rectangle(canvasObject.x, canvasObject.y, canvasObject.width, canvasObject.height);
+            Rectangle objRect = new Rectangle((int) canvasObject.x, (int) canvasObject.y, (int) canvasObject.width, (int) canvasObject.height);
             if (objRect.contains(canvasPoint)) return true;
         }
         return false;
+    }
+
+    public void select(boolean selected) {
+        this.objectsSelected = selected;
+        sb = getSelectionBounds();
+        repaint();
     }
 
     private void drawObjects(Graphics2D g2) {
@@ -126,10 +136,10 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
             g2.translate(obj.x + obj.width/2.0, obj.y + obj.height/2.0);
             g2.rotate(Math.toRadians(obj.angle));
             g2.translate(-obj.width/2.0, -obj.height/2.0);
-            g2.fillRect(0, 0, obj.width, obj.height);
+            g2.fillRect(0, 0, (int) obj.width, (int) obj.height);
             g2.setTransform(old);
         }
-        Rectangle sb = getSelectionBounds();
+        sb = getSelectionBounds();
         if (sb != null) {
             AffineTransform old = g2.getTransform();
             g2.setColor(Color.BLACK);
@@ -138,10 +148,10 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
             g2.drawRect(sb.x, sb.y, sb.width, sb.height);
             g2.setTransform(old);
             g2.setColor(Color.WHITE);
-            int[][] anchorPoints = {
-                    {sb.x, sb.y}, {sb.x+sb.width, sb.y}, {sb.x+sb.width, sb.y+sb.height}, {sb.x, sb.y+sb.height}
+            currentAnchorPoints = new int[][]{
+                    {sb.x, sb.y}, {sb.x + sb.width, sb.y}, {sb.x + sb.width, sb.y + sb.height}, {sb.x, sb.y + sb.height}
             };
-            for (int[] pt : anchorPoints) {
+            for (int[] pt : currentAnchorPoints) {
                 g2.setStroke(new BasicStroke(3));
                 g2.fillRect(pt[0] - ANCHOR_SIZE/2, pt[1] - ANCHOR_SIZE/2, ANCHOR_SIZE, ANCHOR_SIZE);
                 g2.setColor(Color.BLACK);
@@ -152,6 +162,55 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         }
     }
 
+    public void warpRectangle(int anchor, Point newPoint) {
+        //System.out.println("Warping rectangle at anchor " + anchor + " to point " + newPoint);
+        if (sb == null || sb.width == 0 || sb.height == 0) return;
+        Point canvasPoint = screenToCanvas(newPoint);
+
+        int fixedX = 0, fixedY = 0;
+        switch (anchor) {
+            case 0 -> { fixedX = sb.x + sb.width; fixedY = sb.y + sb.height; }
+            case 1 -> { fixedX = sb.x; fixedY = sb.y + sb.height; }
+            case 2 -> { fixedX = sb.x; fixedY = sb.y; }
+            case 3 -> { fixedX = sb.x + sb.width; fixedY = sb.y; }
+            default -> { return; }
+        }
+
+        int minX = Math.min(fixedX, canvasPoint.x);
+        int minY = Math.min(fixedY, canvasPoint.y);
+        int maxX = Math.max(fixedX, canvasPoint.x);
+        int maxY = Math.max(fixedY, canvasPoint.y);
+
+        int newWidth = maxX - minX;
+        int newHeight = maxY - minY;
+        if (newWidth < 5 || newHeight < 5) return;
+
+        for (CanvasObject obj : canvasObjects) {
+            if (obj.selected) {
+                double relX = (obj.x - sb.x) / (double) sb.width;
+                double relY = (obj.y - sb.y) / (double) sb.height;
+                obj.x = (minX + relX * newWidth);
+                obj.y = (minY + relY * newHeight);
+                obj.width = (obj.width * (newWidth / (double) sb.width));
+                obj.height = (obj.height * (newHeight / (double) sb.height));
+            }
+        }
+
+        switch (anchor) {
+            case 0 -> { sb.x = minX; sb.y = minY; }
+            case 1 -> { sb.x = maxX; sb.y = minY; }
+            case 2 -> { sb.x = maxX; sb.y = maxY; }
+            case 3 -> { sb.x = minX; sb.y = maxY; }
+        }
+
+        repaint();
+    }
+
+    public Rectangle getMarkedObjects() {
+        if (!objectsSelected) return null;
+        return sb;
+    }
+
     public Rectangle getSelectionBounds() {
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
@@ -159,10 +218,10 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         for (CanvasObject obj : canvasObjects) {
             if (!obj.selected) continue;
             anySelected = true;
-            minX = Math.min(minX, obj.x);
-            minY = Math.min(minY, obj.y);
-            maxX = Math.max(maxX, obj.x + obj.width);
-            maxY = Math.max(maxY, obj.y + obj.height);
+            minX = (int) Math.min(minX, obj.x);
+            minY = (int) Math.min(minY, obj.y);
+            maxX = (int) Math.max(maxX, obj.x + obj.width);
+            maxY = (int) Math.max(maxY, obj.y + obj.height);
         }
         if (!anySelected) return null;
         return new Rectangle(minX, minY, maxX - minX, maxY - minY);
@@ -188,7 +247,7 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         Point canvasPoint = screenToCanvas(point);
         boolean marked = false;
         for (CanvasObject obj : canvasObjects) {
-            Rectangle objRect = new Rectangle(obj.x, obj.y, obj.width, obj.height);
+            Rectangle objRect = new Rectangle((int) obj.x, (int) obj.y, (int) obj.width, (int) obj.height);
             if (objRect.contains(canvasPoint)) {
                 obj.selected = true;
                 marked = true;
@@ -208,7 +267,7 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
         );
         boolean marked = false;
         for (CanvasObject obj : canvasObjects) {
-            Rectangle objRect = new Rectangle(obj.x, obj.y, obj.width, obj.height);
+            Rectangle objRect = new Rectangle((int) obj.x, (int) obj.y, (int) obj.width, (int) obj.height);
             obj.selected = selectionRect.intersects(objRect) || objRect.contains(p1);
             if (obj.selected) marked = true;
         }
@@ -218,6 +277,7 @@ public class DrawingPanel extends JPanel implements MouseListener, MouseMotionLi
     public void unmarkAll() {
         for (CanvasObject obj : canvasObjects) {
             obj.selected = false;
+            select(false);
         }
         repaint();
     }

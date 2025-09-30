@@ -32,7 +32,7 @@ public class SaveAndLoad {
         // Draw the canvas board and objects at 1:1 scale
         for (CanvasObject obj : canvasObjects) {
             g2.setColor(obj.color);
-            g2.fillRect(obj.x, obj.y, obj.width, obj.height);
+            g2.fillRect((int) obj.x, (int) obj.y, (int) obj.width, (int) obj.height);
         }
 
         g2.dispose();
